@@ -1,0 +1,511 @@
+import telebot
+import random
+from telebot import types
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from email_validate import validate, validate_or_fail
+import time
+import re
+
+bot = telebot.TeleBot('')
+
+# Отказ в обработке различных файлов
+@bot.message_handler(content_types=["audio", "document", "photo", "sticker", "video", "video_note", "voice", "location", "contact",
+                 "new_chat_members", "left_chat_member", "new_chat_title", "new_chat_photo", "delete_chat_photo",
+                 "group_chat_created", "supergroup_chat_created", "channel_chat_created", "migrate_to_chat_id",
+                 "migrate_from_chat_id", "pinned_message"])
+def any_files(message):
+    bot.send_message(message.chat.id, "Извините, я не умею обрабатывать данный тип файлов", reply_markup=markup_start)
+    
+# Обработка команд "start" и "help"
+
+@bot.message_handler(commands=["start", "help"])
+def start(message):
+    global markup_start
+    markup_start = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    item_start_1 = types.KeyboardButton("⚙️ Тех.поддержка")
+    item_start_2 = types.KeyboardButton("📇 Запросить счет")
+    item_start_3 = types.KeyboardButton("⭐ Акции")
+    item_start_4 = types.KeyboardButton("☎ Контакты СЦ")
+    item_start_5 = types.KeyboardButton("📘 Выписка ЕГРЮЛ")
+    item_start_6 = types.KeyboardButton("💻 Все сервисы")
+    markup_start.add(item_start_1, item_start_2, item_start_3, item_start_4, item_start_6)
+    bot.send_message(message.chat.id, 'Добрый день, ' + message.from_user.first_name +
+                     '! \nЭто бот сервисного центра \nАО "ПФ "СКБ Контур".'+'\nЧем Вам помочь?', reply_markup=markup_start)
+    
+
+# Основное меню
+@bot.message_handler(content_types=["text"])
+def tp(message):
+    if message.chat.type == "private":
+        if message.text == "⚙️ Тех.поддержка": 
+            markup_tp = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+            item_tp_1 = types.KeyboardButton("Оставить заявку")
+            item_tp_2 = types.KeyboardButton("Отобразить номер телефона")
+            item_tp_3 = types.KeyboardButton("Установочный диск")
+            item_tp_4 = types.KeyboardButton("Часто задаваемые вопросы")
+            item_tp_5 = types.KeyboardButton("В начало меню")
+            markup_tp.add(item_tp_1, item_tp_2, item_tp_3, item_tp_4, item_tp_5)
+            bot.send_message(message.chat.id, "Как Вам будет удобно связаться с нами?", reply_markup=markup_tp)
+
+        if message.text == "Оставить заявку":
+            bot.send_message(message.chat.id, "Введите ИНН:")
+            bot.register_next_step_handler(message, reg_tp)
+
+        if message.text == "Отобразить номер телефона":
+            bot.send_message(message.chat.id, "Режим работы: \nпн-чт с 9:00 до 18:00 \nпт с 9:00 до 17:00 \n+7(347)200-80-15 \nФедеральный номер 24/7 \n8 800 500-50-80")
+
+        if message.text == "Установочный диск":
+            markup_install = types.InlineKeyboardMarkup()
+            install_button = types.InlineKeyboardButton(text="Перейти на Установочный диск", url="https://install.kontur.ru")
+            markup_install.add(install_button)
+            bot.send_message(message.chat.id, "Нажмите на кнопку и перейди на установочный диск.", reply_markup=markup_install)
+
+        if message.text == "Часто задаваемые вопросы":
+            markup_faq = types.InlineKeyboardMarkup(row_width=1)
+            url_button_faq_1 = types.InlineKeyboardButton(text="Топ‑5 вопросов об электронной подписи в 2022 году", url="https://ca.kontur.ru/articles/22128-top5_63fz_2022")
+            url_button_faq_2 = types.InlineKeyboardButton(text="Как продлить электронную подпись", url="https://ca.kontur.ru/faq/lk/prodlenie-sertifikata")
+            url_button_faq_3 = types.InlineKeyboardButton(text="Как настроить рабочее место и установить сертификат?", url="https://ca.kontur.ru/faq/teh/nastroika-i-ustanovka")
+            url_button_faq_4 = types.InlineKeyboardButton(text="Технические вопросы и ошибки при работе", url="https://ca.kontur.ru/faq/teh")
+            url_button_faq_5 = types.InlineKeyboardButton(text="Работа с Электронной подписью", url="https://ca.kontur.ru/faq/signature")
+            url_button_faq_6 = types.InlineKeyboardButton(text="Работа на Государственных порталах", url="https://ca.kontur.ru/faq/portal")
+            url_button_faq_7 = types.InlineKeyboardButton(text="Работа в Контур.Экстерн", url="https://www.kontur-extern.ru/support/faq/36")
+            url_button_faq_8 = types.InlineKeyboardButton(text="Работа в Контур.Диадок", url="https://www.diadoc.ru/docs/faq")   
+            markup_faq.add(url_button_faq_1, url_button_faq_2, url_button_faq_3, url_button_faq_4, url_button_faq_5, url_button_faq_6, url_button_faq_7, url_button_faq_8)
+            bot.send_message(message.chat.id, "Часто задаваемые вопросы", reply_markup=markup_faq)
+
+        if message.text == "📇 Запросить счет":
+            markup_score = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item_score_1 = types.KeyboardButton("Экстерн")
+            item_score_2 = types.KeyboardButton("Диадок")
+            item_score_3 = types.KeyboardButton("Фокус")
+            item_score_4 = types.KeyboardButton("Закупки")
+            item_score_11 = types.KeyboardButton("Оставить заявку")
+            item_score_12 = types.KeyboardButton("В начало меню")
+            markup_score.add(item_score_1, item_score_2, item_score_3, item_score_4, item_score_11, item_score_12)
+            bot.send_message(message.chat.id, 'На какой продукт?', reply_markup=markup_score)
+
+        if message.text == "Экстерн":
+            global extern
+            extern = message.text
+            markup_reg_extern = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item_reg_extern_1 = types.KeyboardButton("Обслуживающая бухгалтерия")
+            item_reg_extern_2 = types.KeyboardButton("Одиночная организация")
+            markup_reg_extern.add(item_reg_extern_1, item_reg_extern_2)
+            bot.send_message(message.chat.id, 'У Вас обслуживающая бухгалтерия или одиночная организация?', reply_markup=markup_reg_extern)
+            bot.register_next_step_handler(message, reg_extern_contacts)
+
+        if message.text == "Диадок":
+            global diadoc
+            diadoc = message.text
+            markup_dd = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item_dd_1 = types.KeyboardButton("250 документов")
+            item_dd_2 = types.KeyboardButton("600 документов")
+            item_dd_3 = types.KeyboardButton("1200 документов")
+            item_dd_4 = types.KeyboardButton("1500 документов")
+            item_dd_5 = types.KeyboardButton("2000 документов")
+            item_dd_6 = types.KeyboardButton("3000 документов")
+            item_dd_7 = types.KeyboardButton("5000 документов")
+            item_dd_8 = types.KeyboardButton("Мне нужна помощь в подборе")
+            markup_dd.add(item_dd_1, item_dd_2, item_dd_3, item_dd_4, item_dd_5, item_dd_6, item_dd_7, item_dd_8)
+            bot.send_message(message.chat.id, 'Выберите пакет документов', reply_markup=markup_dd)
+            bot.register_next_step_handler(message, reg_dd)
+
+        if message.text == "Фокус":
+            global focus
+            focus = message.text
+            markup_focus = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item_focus_1 = types.KeyboardButton("Бизнес")
+            item_focus_2 = types.KeyboardButton("Премиум")
+            item_focus_3 = types.KeyboardButton("Премиум +")
+            markup_focus.add(item_focus_1, item_focus_2, item_focus_3)
+            bot.send_message(message.chat.id, "Выберите тарифный план", reply_markup=markup_focus)
+            bot.register_next_step_handler(message, reg_focus)
+
+        if message.text == "Закупки":
+            global zakupki
+            zakupki = message.text
+            markup_reg_zakupki = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item_zakupki_1 = types.KeyboardButton("Стандарт")
+            item_zakupki_2 = types.KeyboardButton("Эксперт")
+            item_zakupki_3 = types.KeyboardButton("Командный")
+            markup_reg_zakupki.add(item_zakupki_1, item_zakupki_2, item_zakupki_3)
+            bot.send_message(message.chat.id, "Выберите тарифный план", reply_markup=markup_reg_zakupki)
+            bot.register_next_step_handler(message, reg_zakupki_tarif)
+            
+        if message.text == '☎ Контакты СЦ': 
+            markup_info = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item_info_1 = types.KeyboardButton("/help")
+            markup_info.add(item_info_1)
+            bot.send_message(message.chat.id, 'Адрес: г. Уфа, ул. Комсомольская, \nд. 165/3, офис 803 \nтелефон: +7(347)200-80-15 \nEmail: mail@kontur-02.ru \n\nhttps://2gis.ru/ufa/inside/2393172957224022/firm/70000001022797956?m=56.027967%2C54.76622%2F16.39 \nДля перехода в начало введите /help', reply_markup=markup_info)
+
+        if message.text == "⭐ Акции":
+            markup_action = types.InlineKeyboardMarkup(row_width=1)
+            url_button_action_1 = types.InlineKeyboardButton(text="Акции Контур.Экстерн", url="https://www.kontur-extern.ru/news/actions")
+            url_button_action_2 = types.InlineKeyboardButton(text="Акции Контур.Диадок", url="https://kontur.ru/diadoc/actions/313")
+            markup_action.add(url_button_action_1, url_button_action_2)
+            bot.send_message(message.chat.id, "Акции СКБ Контур", reply_markup=markup_action)
+
+        if message.text == "📘 Выписка ЕГРЮЛ":
+            bot.send_message(message.chat.id, "Пожалуйста, введите ИНН организации, по которой хотите получить выписку ЕГРЮЛ")
+            bot.register_next_step_handler(message, egrul)
+
+        if message.text == "💻 Все сервисы":
+            markup_service = types.InlineKeyboardMarkup(row_width=1)
+            url_button_service_1 = types.InlineKeyboardButton(text="Экстерн - Отчетность через интернет", url="https://kontur.ru/extern?p=3933")
+            url_button_service_2 = types.InlineKeyboardButton(text="Диадок - Электронный документооборот с контрагентами", url="https://kontur.ru/diadoc?p=3933")
+            url_button_service_3 = types.InlineKeyboardButton(text="Фокус - Детальная проверка контрагентов", url="https://kontur.ru/focus?p=3933")
+            url_button_service_4 = types.InlineKeyboardButton(text="Бухгалтерия - Онлайн‑бухгалтерия для малого бизнеса", url="https://kontur.ru/bk?p=3933")
+            url_button_service_5 = types.InlineKeyboardButton(text="Норматив - Справочный сервис для бухгалтера", url="https://kontur.ru/normativ/order?p=3933")
+            url_button_service_6 = types.InlineKeyboardButton(text="Закупки - Поиск государственных и коммерческих закупок", url="https://kontur.ru/zakupki?p=3933")
+            url_button_service_7 = types.InlineKeyboardButton(text="Компас - Умный поиск клиентов для бизнеса", url="https://kontur.ru/compass?p=3933")
+            url_button_service_8 = types.InlineKeyboardButton(text="Маркет - Учетная система и кассовая программа", url="https://kontur.ru/market?p=3933")
+            url_button_service_9 = types.InlineKeyboardButton(text="Маркировка - Комплексные решения для маркировки", url="https://kontur.ru/markirovka?p=3933")
+            url_button_service_10 = types.InlineKeyboardButton(text="ОФД - Удобный и надежный оператор фискальных данных", url="https://kontur.ru/ofd?p=3933")
+            url_button_service_11 = types.InlineKeyboardButton(text="Тревел - Управляйте командировками в одном окне", url="https://kontur.ru/travel?p=3933")
+            url_button_service_12 = types.InlineKeyboardButton(text="Эльба - Онлайн‑бухгалтерия для ИП и ООО на УСН и патенте", url="https://kontur.ru/elba?p=3933")
+            markup_service.add(url_button_service_1, url_button_service_2, url_button_service_3, url_button_service_4, url_button_service_5, url_button_service_6, url_button_service_7, url_button_service_8,
+                               url_button_service_9, url_button_service_10, url_button_service_11, url_button_service_12)
+            bot.send_message(message.chat.id, "Все сервисы", reply_markup=markup_service)            
+
+        if message.text == "Да":
+            bot.send_message(message.chat.id, 'Спасибо! Наш менеджер свяжется с Вами в ближайшее время. \nДля перехода в начало меню введите \n/start')
+
+        if message.text == "Нет":
+            bot.send_message(message.chat.id, 'Давайте начнём заново: \nДля перехода в начало меню введите \n/start')
+
+        if message.text == "В начало меню":
+            bot.send_message(message.chat.id, "Возвращаемся в начало меню", reply_markup=markup_start)
+            bot.register_next_step_handler(message, start)
+            
+#Заявка в ТП
+#Проверка ИНН - числовое значение, либо 10, либо 12 символов
+def reg_tp(message):
+    global inn_tp
+    inn_tp = message.text
+    if inn_tp == "/start" or inn_tp == "/help" or inn_tp == "В начало меню":
+        bot.send_message(message.chat.id, "Возвращаемся в начало меню", reply_markup=markup_start)
+        bot.register_next_step_handler(message, start)
+    else:
+        if inn_tp.isdigit():
+            if len(inn_tp) == 10 or len(inn_tp) == 12:
+                bot.send_message(message.chat.id, "Введите адрес электронной почты:")
+                bot.register_next_step_handler(message, reg_email_tp)
+            else:
+                bot.send_message(message.chat.id, "Введите корректный ИНН:")
+                bot.register_next_step_handler(message, reg_tp)
+        else:
+            bot.send_message(message.chat.id, "Введите корректный ИНН:")
+            bot.register_next_step_handler(message, reg_tp)
+            
+#Проверка email по выражению (string1)@(string2).(2+characters)        
+def reg_email_tp(message):
+    global email_tp
+    email_tp = str(message.text)
+    if email_tp == "/start" or inn_tp == "/help":
+        bot.send_message(message.chat.id, "Возвращаемся в начало меню", reply_markup=markup_start)
+        bot.register_next_step_handler(message, start)
+    else:
+        test_email_tp = re.compile(r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+')
+        if re.fullmatch(test_email_tp, email_tp):
+            bot.send_message(message.chat.id, "Введите номер телефона:")
+            bot.register_next_step_handler(message, reg_phone_tp)
+        else:
+            bot.send_message(message.chat.id, "Введите корректный адрес электронной почты:")
+            bot.register_next_step_handler(message, reg_email_tp)
+        
+def reg_phone_tp(message):
+    global phone_tp
+    phone_tp = str(message.text)
+    if phone_tp.isdigit():
+        if len(phone_tp) >= 6 and len(phone_tp) <= 12:
+            markup_yes_tp= types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item_yes_tp = types.KeyboardButton("Да")
+            item_no_tp = types.KeyboardButton("Нет")
+            markup_yes_tp.add(item_yes_tp, item_no_tp)
+            bot.send_message(message.chat.id, message.from_user.first_name + ", давайте проверим, \nВаш ИНН: " + inn_tp + " \nВаш e-mail: " + email_tp +
+                            "\nВаш телефон: " + phone_tp + "?", reply_markup=markup_yes_tp)
+            bot.send_message(-1001736886222, "Заявка в тех.поддежку: \n{0}\nимя - {1}\nник - @{2}\nинн - {3}\nпочта - {4}\nтелефон - {5}"
+                            .format(message.chat.id, message.from_user.first_name, message.from_user.username, inn_tp, email_tp, phone_tp))
+        else:
+            bot.send_message(message.chat.id, "Введите корректный номер телефона")
+            bot.register_next_step_handler(message, reg_phone_tp)
+   
+#Заявка Экстерн
+def reg_extern_contacts(message):
+    if message.text in ["Обслуживающая бухгалтерия", "Одиночная организация"]:
+        global ob
+        ob = message.text
+        markup_3_2 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        item_3_2_1 = types.KeyboardButton("Общая")
+        item_3_2_2 = types.KeyboardButton("УСН, Патент")
+        markup_3_2.add(item_3_2_1, item_3_2_2)
+        bot.send_message(message.chat.id, 'Выберите систему налогообложения', reply_markup=markup_3_2)
+        bot.register_next_step_handler(message, reg_sno_extern)
+
+def reg_sno_extern(message):
+    if message.text in ["Общая", "УСН, Патент"]:
+        global sno
+        sno = message.text
+        bot.send_message(message.chat.id, 'Введите ИНН:')
+        bot.register_next_step_handler(message, reg_inn_extern)
+
+def reg_inn_extern(message):
+    global inn_extern
+    inn_extern = message.text
+    if inn_extern.isdigit():
+        if len(inn_extern) == 10 or len(inn_extern) == 12:
+            bot.send_message(message.chat.id, "Введите адрес электронной почты:")
+            bot.register_next_step_handler(message, reg_email_extern)
+        else:
+            bot.send_message(message.chat.id, "Введите корректный ИНН:")
+            bot.register_next_step_handler(message, reg_inn_extern)
+    else:
+        bot.send_message(message.chat.id, "Введите корректный ИНН:")
+        bot.register_next_step_handler(message, reg_inn_extern)
+        return
+
+def reg_email_extern(message):
+    global email_extern
+    email_extern = str(message.text)
+    test_email_extern = re.compile(r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+')
+    if re.fullmatch(test_email_extern, email_extern):
+        bot.send_message(message.chat.id, "Введите ваш номер телефона: ")
+        bot.register_next_step_handler(message, reg_phone_extern)
+    else:
+        bot.send_message(message.chat.id, "Введите корректный адрес электронной почты:")
+        bot.register_next_step_handler(message, reg_email_extern)
+
+def reg_phone_extern(message):
+    global phone_extern
+    phone_extern = str(message.text)
+    if phone_extern.isdigit():
+        if len(phone_extern) >= 6 and len(phone_extern) <= 12:
+            markup_yes_tp= types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item_yes_tp = types.KeyboardButton("Да")
+            item_no_tp = types.KeyboardButton("Нет")
+            markup_yes_tp.add(item_yes_tp, item_no_tp)
+            bot.send_message(message.chat.id, message.from_user.first_name + ", давайте проверим, \nВаш ИНН: " + inn_extern + " \nВаш e-mail: " + email_extern +
+                             "\nВаш телефон: " + phone_extern + "?", reply_markup=markup_yes_tp)
+            bot.send_message(-1001736886222, "Заявка по Экстерну: \n{0}\nимя - {1}\nник - @{2}\nинн - {3}\nпочта - {4}\nтелефон - {5}\nтип организации - {6}\nСНО - {7}"
+                              .format(message.chat.id, message.from_user.first_name, message.from_user.username, inn_extern, email_extern, phone_extern, ob, sno))
+        else:
+            bot.send_message(message.chat.id, "Введите корректный номер телефона")
+            bot.register_next_step_handler(message, reg_phone_extern)
+            return
+            
+    else:   
+        bot.send_message(message.chat.id, "Введите корректный номер телефона")
+        bot.register_next_step_handler(message, reg_phone_extern)
+        return
+   
+#Заявка Диадок
+def reg_dd(message):
+    global package
+    package = str(message.text)
+    markup_dd_int = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    item_dd_int_1 = types.KeyboardButton("Да, у меня 1С")
+    item_dd_int_2 = types.KeyboardButton("Да, у меня другая учетная система")
+    item_dd_int_3 = types.KeyboardButton("Нет, только пакет документов")
+    markup_dd_int.add(item_dd_int_1, item_dd_int_2, item_dd_int_3)
+    bot.send_message(message.from_user.id, "Вам нужна интеграция с учётной системой?", reply_markup=markup_dd_int) 
+    bot.register_next_step_handler(message, reg_integration_dd)
+
+def reg_integration_dd(message):
+    global integration_dd
+    integration_dd = str(message.text)
+    bot.send_message(message.from_user.id, "Введите ИНН: ")
+    bot.register_next_step_handler(message, reg_inn_dd)
+
+def reg_inn_dd(message):
+    global inn_dd
+    inn_dd = message.text
+    if inn_dd.isdigit():
+        if len(inn_dd) == 10 or len(inn_dd) == 12:
+            bot.send_message(message.chat.id, "Введите адрес электронной почты:")
+            bot.register_next_step_handler(message, reg_email_dd)
+        else:
+            bot.send_message(message.chat.id, "Введите корректный ИНН:")
+            bot.register_next_step_handler(message, reg_inn_dd)
+    else:
+        bot.send_message(message.chat.id, "Введите корректный ИНН:")
+        bot.register_next_step_handler(message, reg_inn_dd)
+        return
+
+def reg_email_dd(message):
+    global email_dd
+    email_dd = str(message.text)
+    test_email_dd = re.compile(r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+')
+    if re.fullmatch(test_email_dd, email_dd):
+        bot.send_message(message.from_user.id, "Введите ваш номер телефона:")
+        bot.register_next_step_handler(message, reg_phone_dd)
+    else:
+        bot.send_message(message.chat.id, "Введите корректный адрес электронной почты:")
+        bot.register_next_step_handler(message, reg_email_dd)
+
+def reg_phone_dd(message):
+    global phone_dd
+    phone_dd = message.text
+    if phone_dd.isdigit():
+        if len(phone_dd) >= 6 and len(phone_dd) <= 12:
+            markup4 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item11 = types.KeyboardButton("Да")
+            item12 = types.KeyboardButton("Нет")
+            markup4.add(item11, item12)
+            bot.send_message(message.from_user.id, message.from_user.first_name + ', давайте проверим, \nВаш ИНН: ' + inn_dd + ' \nВаш e-mail: '
+                             + email_dd + '\nНомер телефона:' + phone_dd +'?', reply_markup=markup4)
+            bot.send_message (-1001736886222, " Заявка по Диадоку: \n{0}\nимя - {1}\nник - @{2}\nинн - {3}\nпочта - {4}\nтелефон - {5}\nпакет - {6}\nинтеграция -{7}"
+                              .format(message.chat.id, message.from_user.first_name, message.from_user.username, inn_dd, email_dd, phone_dd, package, integration_dd))
+        else:
+            bot.send_message(message.chat.id, "Введите корректный номер телефона")
+            bot.register_next_step_handler(message, reg_phone_dd)
+            return        
+    else:   
+        bot.send_message(message.chat.id, "Введите корректный номер телефона")
+        bot.register_next_step_handler(message, reg_phone_dd)
+        return
+
+#Заявка Фокус
+def reg_focus(message):
+    global focus_user
+    focus_user = str(message.text)
+    bot.send_message(message.chat.id, 'Введите ИНН: ')
+    bot.register_next_step_handler(message, reg_inn_focus)
+
+def reg_inn_focus(message):
+    global inn_focus
+    inn_focus = message.text
+    if inn_focus.isdigit():
+        if len(inn_focus) == 10 or len(inn_focus) == 12:
+            bot.send_message(message.chat.id, "Введите адрес электронной почты:")
+            bot.register_next_step_handler(message, reg_email_focus)
+        else:
+            bot.send_message(message.chat.id, "Введите корректный ИНН:")
+            bot.register_next_step_handler(message, reg_inn_focus)
+    else:
+        bot.send_message(message.chat.id, "Введите корректный ИНН:")
+        bot.register_next_step_handler(message, reg_inn_focus)
+        return
+
+def reg_email_focus(message):
+    global email_focus
+    email_focus = str(message.text)
+    test_email_focus = re.compile(r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+')
+    if re.fullmatch(test_email_focus, email_focus):
+        bot.send_message(message.chat.id, "Введите ваш номер телефона: ")
+        bot.register_next_step_handler(message, reg_phone_focus)
+    else:
+        bot.send_message(message.chat.id, "Введите корректный адрес электронной почты:")
+        bot.register_next_step_handler(message, reg_email_focus)
+
+def reg_phone_focus(message):
+    global phone_focus
+    phone_focus = message.text
+    if phone_focus.isdigit():
+        if len(phone_focus) >= 6 and len(phone_focus) <= 12:
+            markup4 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item11 = types.KeyboardButton("Да")
+            item12 = types.KeyboardButton("Нет")
+            markup4.add(item11, item12)
+            bot.send_message(message.from_user.id, message.from_user.first_name + ', давайте проверим, \nВаш ИНН: ' + inn_focus + ' \nВаш e-mail: '
+                             + email_focus + '\nНомер телефона:' + phone_focus +'?', reply_markup=markup4)
+            bot.send_message(-1001736886222, "Заявка по Фокусу: \n{0}\nимя - {1}\nник - @{2}\nинн - {3}\nпочта - {4}\nтелефон - {5}\nТариф - {6}"
+                          .format(message.chat.id, message.from_user.first_name, message.from_user.username, inn_focus, email_focus, phone_focus, focus_user))
+        else:
+            bot.send_message(message.chat.id, "Введите корректный номер телефона")
+            bot.register_next_step_handler(message, reg_phone_focus)
+            return        
+    else:   
+        bot.send_message(message.chat.id, "Введите корректный номер телефона")
+        bot.register_next_step_handler(message, reg_phone_focus)
+        return
+
+#Заявка Закупки    
+def reg_zakupki_tarif(message):
+    global zakupki_tarif
+    zakupki_tarif = message.text
+    markup_zakupki_1 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    item_zakupki_12m = types.KeyboardButton("12 месяцев")
+    item_zakupki_15m = types.KeyboardButton("15 месяцев")
+    item_zakupki_24m = types.KeyboardButton("24 месяца")
+    markup_zakupki_1.add(item_zakupki_12m, item_zakupki_15m, item_zakupki_24m)
+    bot.send_message(message.from_user.id, "Выберите период обслуживания", reply_markup=markup_zakupki_1) 
+    bot.register_next_step_handler(message, reg_zakupki_period)
+
+def reg_zakupki_period(message):
+    global zakupki_period
+    zakupki_period = str(message.text)
+    bot.send_message(message.from_user.id, "Введите ИНН: ")
+    bot.register_next_step_handler(message, reg_inn_zakupki)
+
+def reg_inn_zakupki(message):
+    global inn_zakupki
+    inn_zakupki = message.text
+    if inn_zakupki.isdigit():
+        if len(inn_zakupki) == 10 or len(inn_zakupki) == 12:
+            bot.send_message(message.chat.id, "Введите адрес электронной почты:")
+            bot.register_next_step_handler(message, reg_email_zakupki)
+        else:
+            bot.send_message(message.chat.id, "Введите корректный ИНН:")
+            bot.register_next_step_handler(message, reg_inn_zakupki)
+    else:
+        bot.send_message(message.chat.id, "Введите корректный ИНН:")
+        bot.register_next_step_handler(message, reg_inn_zakupki)
+        return
+
+def reg_email_zakupki(message):
+    global email_zakupki
+    email_zakupki = str(message.text)
+    test_email_zakupki = re.compile(r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+')
+    if re.fullmatch(test_email_zakupki, email_zakupki):
+        bot.send_message(message.chat.id, "Введите ваш номер телефона: ")
+        bot.register_next_step_handler(message, reg_phone_zakupki)
+    else:
+        bot.send_message(message.chat.id, "Введите корректный адрес электронной почты:")
+        bot.register_next_step_handler(message, reg_email_zakupki)
+
+def reg_phone_zakupki(message):
+    global phone_zakupki
+    phone_zakupki = message.text
+    if phone_zakupki.isdigit():
+        if len(phone_zakupki) >= 6 and len(phone_zakupki) <= 12:
+            markup4 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            item11 = types.KeyboardButton("Да")
+            item12 = types.KeyboardButton("Нет")
+            markup4.add(item11, item12)
+            bot.send_message(message.from_user.id, message.from_user.first_name + ', давайте проверим, \nВаш ИНН: ' + inn_zakupki + ' \nВаш e-mail: '
+                             + email_zakupki + '\nНомер телефона:' + phone_zakupki +'?', reply_markup=markup4)
+            bot.send_message(-1001736886222, "Заявка по Закупкам: \n{0}\nимя - {1}\nник - @{2}\nинн - {3}\nпочта - {4}\nтелефон - {5}\nТариф - {6}\nСрок действия - {7}"
+                          .format(message.chat.id, message.from_user.first_name, message.from_user.username, inn_zakupki, email_zakupki, phone_zakupki, zakupki_tarif, zakupki_period))
+        else:
+            bot.send_message(message.chat.id, "Введите корректный номер телефона")
+            bot.register_next_step_handler(message, reg_phone_zakupki)
+            return        
+    else:   
+        bot.send_message(message.chat.id, "Введите корректный номер телефона")
+        bot.register_next_step_handler(message, reg_phone_zakupki)
+        return    
+
+#Получить выписку ЕГРЮЛ
+def egrul(message):
+    global inn_egrul
+    inn_egrul = str(message.text)
+    url = "https://egrul.nalog.ru/index.html"
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    web = webdriver.Chrome(options=options, executable_path="C:\\Users\\Алексей\\Desktop\\Бот\\Бот\\application\\chromedriver.exe")
+    web.maximize_window()
+    web.get(url=url)
+    time.sleep(5)
+    web.find_element(By.XPATH, '//*[@id="query"]').click()
+    source = web.find_element(By.XPATH, "//input[@class='form-control']")
+    object_1.send_keys(inn_egrul)
+    time.sleep(5)
+    web.find_element(By.XPATH, '//*[@id="resultContent"]/div/div[3]/button').click()
+    
+
+bot.polling(none_stop=True, interval=1, timeout=0)
+            
+
